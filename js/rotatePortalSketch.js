@@ -64,7 +64,7 @@ function init() {
 		 button.addEventListener( 'click', function ( event ) {
 			 left = true;
 			 moveIndex.set(0,1);
-			 if (slides[moveIndex.x].length>0 && tick<slides[moveIndex.x].length)
+			 if (slides[moveIndex.x].length>0)// && tick<slides[moveIndex.x].length)
 			 	move( duration );
 		 }, false );
 	 button = document.getElementById( 'right' );
@@ -200,17 +200,18 @@ function setSlides(){
 	let holeRadius = 0.5*scale;
 	let borderThickness = 0.05*scale;
 	portalsOffset = new THREE.Vector3(0, 0, sphereRadius);
-	let x = Math.sin(Math.PI*2/(slideCounts+1)*slideCounts)*step*3;
-	let y = Math.cos(Math.PI*2/(slideCounts+1)*slideCounts)*step*3;
+	let x = Math.sin(Math.PI*2/slideCounts*slideCounts)*step*3;
+	let y = Math.cos(Math.PI*2/slideCounts*slideCounts)*step*3;
 	platform.position.set(x, y, 0);
 	platform.position.add(portalsOffset);
-	platform.rotation.set(Math.PI/2, Math.PI*2*(-1/(slideCounts+1)*slideCounts), 0);
+	platform.rotation.set(Math.PI/2, Math.PI*2*(-1/slideCounts*slideCounts), 0);
 	//platform.rotation.x = 0;
 
 	camera.position.add(portalsOffset);
-	camera.position.z = 300;
+	//camera.position.z = 300;
 		camera.lookAt(platform.position.x, platform.position.y, platform.position.z);
-		camera.rotateZ(Math.PI/2);
+		camera.rotateZ(-Math.PI/2);
+		camera.rotateX(Math.PI);
 	//camera.lookAt( new THREE.Vector3()); // camera.rotateZ(-Math.PI/2);
 	let loader = new THREE.TextureLoader();
 
@@ -246,11 +247,11 @@ function setSlides(){
 		halfSphereGroup.add( holeMesh );
 		halfSphereGroup.add( borderMesh );
 
-		let x = Math.sin(Math.PI*2/(slideCounts+1)*i)*step*3;
-		let y = Math.cos(Math.PI*2/(slideCounts+1)*i)*step*3;
+		let x = Math.sin(Math.PI*2/slideCounts*i)*step*3;
+		let y = Math.cos(Math.PI*2/slideCounts*i)*step*3;
 		halfSphereGroup.position.set(x, y, 0);
 		halfSphereGroup.position.add(portalsOffset);
-		halfSphereGroup.rotation.set(Math.PI/2, Math.PI*2*(-1/(slideCounts+1)*i), 0);
+		halfSphereGroup.rotation.set(Math.PI/2, Math.PI*2*(-1/slideCounts*i), 0);
 		halfSphereGroup.name = i;
 		slides[0].push(halfSphereGroup);
 		scene.add(slides[0][i]);
@@ -261,38 +262,21 @@ function setSlides(){
 			slides[0][i].rotation.y,
 			slides[0][i].rotation.z)
 		targets[0].push(obj);
+		targets[1].push(obj);
 	}
 }
 function move(duration){
 
 	TWEEN.removeAll();
 
-	if (tick == 0)
-		lastSlide = null;
-	else
-		lastSlide = currentSlide;
-	currentSlide = slides[0][currentIndex];
-	var object = currentSlide;
-	var target = platform;
-
 	var rand1 = 1;
 	var rand2 = 1;
 
-	new TWEEN.Tween( object.position )
-		.to( { x: target.position.x, y: target.position.y, z: target.position.z },
-		rand1* duration + duration )
-		.easing( TWEEN.Easing.Exponential.InOut )
-		.start();
+		updateSlides();
 
-	new TWEEN.Tween( object.rotation )
-		.to( { x: target.rotation.x, y: target.rotation.y, z: target.rotation.z },
-			rand2 * duration + duration )
-		.easing( TWEEN.Easing.Exponential.InOut )
-		.start();
-
-	if(tick !==0){
-		var object = lastSlide;
-		var target = targets[0][lastSlide.name];
+	for (var s=0;s<slides[0].length;s++){
+		var object = slides[0][s];
+		var target = targets[0][s];
 
 		new TWEEN.Tween( object.position )
 			.to( { x: target.position.x, y: target.position.y, z: target.position.z },
@@ -305,11 +289,10 @@ function move(duration){
 				rand2 * duration + duration )
 			.easing( TWEEN.Easing.Exponential.InOut )
 			.start();
+
 	}
 
-	currentIndex++;
 	tick++;
-	console.log("tick", currentSlide.name)
 
 		new TWEEN.Tween( this )
 			.to( {}, duration * 2 )
@@ -317,42 +300,33 @@ function move(duration){
 			.start();
 }
 function updateSlides(){
-	if (left && slides[moveIndex.x].length != slideCounts){
-		slides[moveIndex.y].push(currentSlide);
-		targets[moveIndex.y].push(targets[moveIndex.x][currentIndex]);
-	}
-	if (!left){
-		var temp = [currentSlide];
-		slides[moveIndex.y] = temp.concat(slides[moveIndex.y]);
-		targets[moveIndex.y].push(targets[moveIndex.x][currentIndex]);
-	}
-	if (left){
-		currentSlide = slides[moveIndex.x][currentIndex];
-		slides[moveIndex.x].splice(currentIndex, 1);
-	}
-	else{
-		currentSlide = slides[moveIndex.x].pop();
-		//slides[moveIndex.x][ slides[moveIndex.x].length - 1];
-		//targets[moveIndex.x].splice(slides[moveIndex.x].length-1, 1);
-	}
-
-	targets[moveIndex.x].splice(currentIndex, 1);
-	//console.log("targets",targets);
-	console.log(currentSlide.name, "slides",slides);
-
-	if (left)
-		offsetSlides[1].x -=step;
-	else
-		offsetSlides[1].x +=step;
-
 	for (var i=0; i<targets.length; i++)
 		for (var j=0; j<targets[i].length; j++){
-
-			targets[i][j].position.set(step*(0.5+j), cardSize.y/2, 0);
-			targets[i][j].position.add(offsetSlides[i]);
-			if (i==0)
-				targets[i][j].rotation.set(0, 1/2*Math.PI,0);
-			if (i==1)
-				targets[i][j].rotation.set(0,-1/2*Math.PI,Math.PI);
+			if (i==1){
+					targets[i][j].position.set(
+							targets[0][j].position.x,
+							targets[0][j].position.y,
+							targets[0][j].position.z
+						);
+					targets[i][j].rotation.set(
+							targets[0][j].rotation.x,
+							targets[0][j].rotation.y,
+							targets[0][j].rotation.z
+						);
+			}
+			else{
+				var index = (j+1)%targets[i].length;
+				var X = 1;
+				targets[i][j].position.set(
+						targets[X][index].position.x,
+						targets[X][index].position.y,
+						targets[X][index].position.z
+					);
+				targets[i][j].rotation.set(
+						targets[X][index].rotation.x,
+						targets[X][index].rotation.y,
+						targets[X][index].rotation.z
+					);
+			}
 		}
 }
