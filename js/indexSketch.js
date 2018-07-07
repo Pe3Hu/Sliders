@@ -1,0 +1,148 @@
+
+let scene, camera, renderer, clock, deltaTime, totalTime, keyboard;
+
+let mover, target;
+
+initialize();
+animate();
+
+function initialize(){
+	scene = new THREE.Scene();
+
+	camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.1, 1000 );
+
+	mover = new THREE.Group();
+	mover.add( camera );
+	mover.position.set(0, 1, 3);
+	scene.add( mover );
+
+	// camera.position.set(0, 2, 4);
+	// camera.lookAt( scene.position );
+	// scene.add( camera );
+
+	let ambientLight = new THREE.AmbientLight( 0xcccccc, 1.00 );
+	scene.add( ambientLight );
+
+	// let pointLight = new THREE.PointLight();
+	// camera.add( pointLight );
+
+	renderer = new THREE.WebGLRenderer({
+		antialias : true,
+		alpha: false
+	});
+	renderer.setClearColor(new THREE.Color('lightgrey'), 0)
+	renderer.setSize( window.innerWidth, window.innerHeight );
+	renderer.domElement.style.position = 'absolute'
+	renderer.domElement.style.top  = '0px'
+	renderer.domElement.style.left = '0px'
+	document.body.appendChild( renderer.domElement );
+	window.addEventListener( 'resize', onWindowResize, false );
+
+	clock = new THREE.Clock();
+	deltaTime = 0;
+	totalTime = 0;
+
+	keyboard = new Keyboard();
+
+	let loader = new THREE.TextureLoader();
+
+	// floor
+	let floorGeometry = new THREE.PlaneGeometry(10,10);
+	let floorMaterial = new THREE.MeshBasicMaterial({
+		map: loader.load( 'src/images/color-grid.png' )
+	});
+	let floorMesh = new THREE.Mesh( floorGeometry, floorMaterial );
+	floorMesh.rotation.x = -Math.PI/2;
+	scene.add( floorMesh );
+
+	let halfSphereGroup = new THREE.Group();
+	halfSphereGroup.position.y = 1;
+	scene.add(halfSphereGroup);
+
+	let sphereRadius = 1;
+	let holeRadius = 0.5;
+	let borderThickness = 0.05;
+
+	let halfSphereGeometry = new THREE.SphereGeometry(sphereRadius, 32, 32, Math.PI, Math.PI); // startAngle, sweepAngle
+
+	let cloakTexture = loader.load("src/images/color-grid.png");
+	cloakMaterial = new THREE.MeshBasicMaterial({ map: cloakTexture, side: THREE.FrontSide, colorWrite: false }); // change colorWrite: true to see the cloak
+	let sceneTexture = loader.load("src/images/scene-sphere-outside.jpg");
+	sceneTexture.offset.x = 0.5;
+	sceneTexture.repeat.set(0.5, 1);
+
+	let innerSphere = new THREE.Mesh( halfSphereGeometry, new THREE.MeshBasicMaterial({ map: sceneTexture, side: THREE.BackSide }) );
+	let outerSphere = new THREE.Mesh( halfSphereGeometry, cloakMaterial );
+	let holeMesh    = new THREE.Mesh( new THREE.RingGeometry(holeRadius, sphereRadius * 1.01, 32), cloakMaterial );
+	let borderMesh  = new THREE.Mesh( new THREE.RingGeometry(holeRadius, holeRadius + borderThickness , 32), new THREE.MeshBasicMaterial({color: 0xffffff, side: THREE.DoubleSide}) );
+	borderMesh.position.z = 0.001; // avoid depth-fighting artifacts
+  target = halfSphereGroup.position.clone();
+
+	halfSphereGroup.add( innerSphere );
+	halfSphereGroup.add( outerSphere );
+	halfSphereGroup.add( holeMesh );
+	halfSphereGroup.add( borderMesh );
+}
+
+function update(){
+	keyboard.update();
+
+	let translateSpeed = 1; // units per second
+	let distance = translateSpeed * deltaTime;
+	let rotateSpeed = Math.PI/6; // radians per second
+	let angle = rotateSpeed * deltaTime;
+
+	if (keyboard.isKeyPressed("W"))
+		mover.translateZ( -distance );
+	if (keyboard.isKeyPressed("S"))
+		mover.translateZ( distance );
+
+	if (keyboard.isKeyPressed("A"))
+		mover.translateX( -distance );
+	if (keyboard.isKeyPressed("D"))
+		mover.translateX( distance );
+
+	if (keyboard.isKeyPressed("R"))
+		mover.translateY( distance );
+	if (keyboard.isKeyPressed("F"))
+		mover.translateY( -distance );
+
+	if (keyboard.isKeyPressed("Q"))
+		mover.rotateY( angle );
+	if (keyboard.isKeyPressed("E"))
+		mover.rotateY( -angle );
+
+	if (keyboard.isKeyPressed("T"))
+		mover.children[0].rotateX( angle );
+	if (keyboard.isKeyPressed("G"))
+		mover.children[0].rotateX( -angle );
+
+
+	//mesh.rotation.y += 0.01;
+}
+
+function render(){
+	renderer.render( scene, camera );
+  checkURL();
+}
+
+function animate(){
+	requestAnimationFrame(animate);
+	deltaTime = clock.getDelta();
+	totalTime += deltaTime;
+	update();
+	render();
+}
+
+function onWindowResize(){
+	camera.aspect = window.innerWidth / window.innerHeight;
+	camera.updateProjectionMatrix();
+	renderer.setSize( window.innerWidth, window.innerHeight );
+}
+
+function checkURL(){
+  let d = mover.position.distanceTo(target);
+  if (d<0.15)
+    document.location.href = "http://polyzer.org/vk_games/vleto_pehu/puzzle/";
+  //  <a href='javascript: document.location.href = "http://polyzer.org/vk_games/vleto_pehu/puzzle/";'>Перейти</a>
+}
